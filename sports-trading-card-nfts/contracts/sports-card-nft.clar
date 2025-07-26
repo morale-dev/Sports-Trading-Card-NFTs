@@ -77,3 +77,75 @@
         )
     )
 )
+
+;; Core Public Functions
+
+(define-public (transfer (token-id uint) (sender principal) (recipient principal))
+    (begin
+        (asserts! (is-eq tx-sender sender) ERR-NOT-AUTHORIZED)
+        (asserts! (is-some (nft-get-owner? sports-card token-id)) ERR-NOT-FOUND)
+        (nft-transfer? sports-card token-id sender recipient)
+    )
+)
+
+(define-public (mint-sports-card
+    (recipient principal)
+    (player-name (string-ascii 50))
+    (team (string-ascii 30))
+    (position (string-ascii 20))
+    (jersey-number uint)
+    (season uint)
+    (rarity uint)
+    (card-series (string-ascii 30))
+    (games-played uint)
+    (points-avg uint)
+    (assists-avg uint)
+    (rebounds-avg uint)
+    (field-goal-pct uint)
+)
+    (let
+        (
+            (next-id (+ (var-get last-token-id) u1))
+        )
+        ;; Validation checks
+        (asserts! (and (>= rarity RARITY-COMMON) (<= rarity RARITY-LEGENDARY)) ERR-INVALID-RARITY)
+        (asserts! (> season u2000) ERR-INVALID-PARAMS)
+        (asserts! (<= jersey-number u99) ERR-INVALID-PARAMS)
+        (asserts! (<= field-goal-pct u100) ERR-INVALID-PARAMS)
+        
+        ;; Mint the NFT
+        (try! (nft-mint? sports-card next-id recipient))
+        
+        ;; Store card information
+        (map-set card-info next-id {
+            player-name: player-name,
+            team: team,
+            position: position,
+            jersey-number: jersey-number,
+            season: season,
+            rarity: rarity,
+            card-series: card-series
+        })
+        
+        ;; Store player statistics
+        (map-set player-stats next-id {
+            games-played: games-played,
+            points-avg: points-avg,
+            assists-avg: assists-avg,
+            rebounds-avg: rebounds-avg,
+            field-goal-pct: field-goal-pct
+        })
+        
+        ;; Update token counter
+        (var-set last-token-id next-id)
+        (ok next-id)
+    )
+)
+
+(define-public (update-base-uri (new-uri (string-ascii 256)))
+    (begin
+        (asserts! (is-eq tx-sender (var-get contract-owner)) ERR-NOT-AUTHORIZED)
+        (var-set base-uri new-uri)
+        (ok true)
+    )
+)
